@@ -12,6 +12,7 @@ def connect_db():
         host=os.environ['DB_HOST'],
         user=os.environ['DB_USER'],
         password=os.environ['DB_PASS'],
+        port=os.environ['DB_PORT'],
         db=os.environ['DB_NAME'],
         charset='utf8mb4',
         cursorclass=pymysql.cursors.DictCursor
