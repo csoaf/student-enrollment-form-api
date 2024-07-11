@@ -98,5 +98,6 @@ class ParentEnrollment(Resource):
                 connection.close()
                 
 api.add_resource(ParentEnrollment, '/parent-enrollment')
+
 if __name__ == '__main__':
     app.run(debug=True)
