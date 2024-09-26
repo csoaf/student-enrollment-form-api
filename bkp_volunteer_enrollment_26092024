@@ -1,0 +1,80 @@
+import json
+import pymysql
+import os
+
+# Initialize RDS MySQL connection parameters
+rds_host = ''
+db_username = ''
+db_password = ''
+db_name = ''
+
+def lambda_handler(event, context):
+    try:
+        # Log the entire incoming event for debugging
+        print("Received event:", json.dumps(event, indent=2))
+
+        # Ensure 'body' is in the event and is not empty
+        if 'body' not in event or not event['body']:
+            return {
+                'statusCode': 400,
+                'body': json.dumps({'message': 'No valid body found in the request'})
+            }
+
+        # Parse the request body
+        body = json.loads(event['body'])
+
+        # Extract required fields
+        email = body.get('email')
+        firstname = body.get('firstname')
+        lastname = body.get('lastname')
+        mobile = body.get('mobile')
+
+        # Optional fields
+        about = body.get('about', '')
+        zipcode = body.get('zipcode', '')
+        address = body.get('address', '')
+        resumeURL=body.get('resumeURL','')
+
+        # Validate required fields
+        if not email or not firstname or not lastname or not mobile or not about or not zipcode or not address:
+            return {
+                'statusCode': 400,
+                'body': json.dumps({'message': 'Missing required fields'})
+            }
+
+        # Insert the data into the RDS database
+        connection = pymysql.connect(
+            host=rds_host,
+            user=db_username,
+            password=db_password,
+            db=db_name,
+            charset='utf8mb4',
+            cursorclass=pymysql.cursors.DictCursor
+        )
+
+        with connection.cursor() as cursor:
+            sql = """
+                INSERT INTO volunteer (email, firstname, lastname, mobile, about, zipcode, address,resumeURL)
+                VALUES (%s, %s, %s, %s, %s, %s, %s,%s)
+            """
+            cursor.execute(sql, (email, firstname, lastname, mobile, about, zipcode, address,resumeURL))
+            connection.commit()
+
+        return {
+            'statusCode': 200,
+            'body': json.dumps({'message': 'Data inserted successfully!'})
+        }
+
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        return {
+            'statusCode': 500,
+            'body': json.dumps({
+                'message': 'Error inserting data into RDS',
+                'error': str(e)
+            })
+        }
+
+    finally:
+        if connection:
+            connection.close()
