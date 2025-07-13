@@ -1,0 +1,78 @@
+import json
+import pymysql
+import os
+
+# Hardcoded database connection details
+DB_HOST = "database-csoaf.cz0kgu4o8jn1.us-east-1.rds.amazonaws.com"
+DB_NAME = "csoaf_db"
+DB_USER = "admin"
+DB_PASSWORD = "csoaf2024"
+
+def lambda_handler(event, context):
+    # Validate incoming event structure
+    if 'body' not in event:
+        return {
+            'statusCode': 400,
+            'body': json.dumps({'message': 'Invalid request: missing body'})
+        }
+
+    body = json.loads(event['body'])
+    if 'email' not in body:
+        return {
+            'statusCode': 400,
+            'body': json.dumps({'message': 'Invalid request: missing email'})
+        }
+
+    email = body['email']
+    print(email)
+
+    # Establish a connection to the database
+    conn = None
+    try:
+        print(DB_USER)
+        conn = pymysql.connect(
+            host=DB_HOST,
+            user=DB_USER,
+            password=DB_PASSWORD,
+            database=DB_NAME,
+            cursorclass=pymysql.cursors.DictCursor
+        )
+        print(DB_USER)
+        cursor = conn.cursor()
+
+        # Check if the user exists and fetch user type
+        query = "SELECT UserType FROM Signup_User WHERE Email = %s"
+        cursor.execute(query, (email,))
+        result = cursor.fetchone()
+
+        if result:
+            user_type = result['user_type']
+            print(f"User Type: {user_type}")
+
+            # Redirect based on user type
+            redirect_url = {
+                'student': '/student/dashboard',
+                'teacher': '/teacher/dashboard',
+                'parent': '/parent/dashboard'
+            }.get(user_type, '/unknown')
+
+            return {
+                'statusCode': 302,
+                'headers': {'Location': redirect_url},
+                'body': json.dumps({'message': 'User found, redirecting to dashboard', 'user_type': user_type})
+            }
+        else:
+            return {
+                'statusCode': 404,
+                'body': json.dumps({'message': 'User not found'})
+            }
+
+    except Exception as e:
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'message': 'An error occurred', 'error': str(e)})
+        }
+
+    finally:
+        if conn:
+            conn.close()
