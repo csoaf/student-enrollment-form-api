@@ -1,0 +1,100 @@
+import json
+import mysql.connector
+import os
+
+# Hardcoded database connection details
+# DB_HOST = "database-csoaf.cz0kgu4o8jn1.us-east-1.rds.amazonaws.com"
+# DB_NAME = "admin"
+# DB_USER = "csoaf_db"
+# DB_PASSWORD = "csoaf2024"
+
+rds_host = "database-csoaf.cz0kgu4o8jn1.us-east-1.rds.amazonaws.com"
+db_username = "admin"
+db_password = "csoaf2024"
+db_name = "csoaf_db"
+db_port = "3306"
+
+def lambda_handler(event, context):
+    # Validate incoming event structure
+    # if 'body' not in event:
+    #     return {
+    #         'statusCode': 400,
+    #         'body': json.dumps({'message': 'Invalid request: missing body'})
+    #     }
+
+    # body = json.loads(event['body'])
+    # if 'email' not in body:
+    #     return {
+    #         'statusCode': 400,
+    #         'body': json.dumps({'message': 'Invalid request: missing email'})
+    #     }
+    # print('body is',body)
+    # email = body['email']
+    # pwd = body['pwd']
+    print('event records',event['Records'])
+    email = 'Bravo.Mcniel@InboxOrigin.com'
+    pwd = 'Regina@123'
+    # print("hi email",email)
+    # print("hi pwd",pwd)
+
+    # Establish a connection to the database
+    conn = None
+    try:
+        # print(DB_USER)
+        # conn = mysql.connector.connect(
+        #     host=DB_HOST,
+        #     user=DB_USER,
+        #     password=DB_PASSWORD,
+        #     database=DB_NAME,
+        #     # cursorclass=pymysql.cursors.DictCursor
+        # )
+        conn = mysql.connector.connect(
+            host=rds_host,
+            user=db_username,
+            password=db_password,
+            db=db_name,
+            connect_timeout=20
+        )
+        # print(DB_USER)
+        cursor = conn.cursor()
+
+        # Check if the user exists and fetch user type
+        query = "SELECT UserType FROM Signup_User WHERE Email = %s and password= %s"
+        print("query",query)
+        cursor.execute(query, (email,pwd))
+        print("cursor:",cursor)
+        result = cursor.fetchone()
+        print("result:",result)
+
+        if result:
+            # user_type = result['user_type']
+            user_type = result[0]
+            print(f"User Type: {user_type}")
+
+            # Redirect based on user type
+            redirect_url = {
+                'student': '/student/dashboard',
+                'teacher': '/teacher/dashboard',
+                'parent': '/parent/dashboard'
+            }.get(user_type, '/unknown')
+
+            return {
+                'statusCode': 302,
+                'headers': {'Location': redirect_url},
+                'body': json.dumps({'message': 'User found, redirecting to dashboard', 'user_type': user_type})
+            }
+        else:
+            return {
+                'statusCode': 404,
+                'body': json.dumps({'message': 'User not found'})
+            }
+
+    except Exception as e:
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'message': 'An error occurred', 'error': str(e)})
+        }
+
+    finally:
+        if conn:
+            conn.close()
