@@ -1,0 +1,13 @@
+import json
+import urllib3
+
+def lambda_handler(event, context):
+    print("Received event: " + str(event))
+    api_call = 'https://canvas.instructure.com/api/v1/users/' + str(event['teacher_id']) + ('/courses?access_token=6936~tfyfufm7EBuCFyJLYcNuP8Pnv6RthDRzv9Xa2vyrxyeUHtKv9WnC2VmX6y2eGNvt&per_page=30')
+    http = urllib3.PoolManager()
+    r = http.request('GET', api_call)
+    data = json.loads(r.data)
+    courses = []
+    for i in data:
+        courses.append(i)
+    return courses
